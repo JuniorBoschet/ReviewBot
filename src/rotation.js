@@ -1,7 +1,3 @@
-// rotation.js
-// Logic for counting workdays since a start date and determining the
-// current team pair responsible for review.
-
 const { startOfDay } = require('date-fns');
 const { getTodayInBrazil, getDateInBrazil, isWorkday, addDays } = require('./dates');
 
@@ -20,11 +16,21 @@ function countWorkdaysSinceStart(startDate) {
   return count;
 }
 
-function getCurrentTeam(startDate, teams) {
-  const workdayCount = countWorkdaysSinceStart(startDate);
-  if (workdayCount === 0) return teams[0];
-  const index = Math.floor((workdayCount - 1) / 2) % teams.length;
+function teamByWorkdayCount(workdayCount, teams, offsetTeams = 0) {
+  if (teams.length === 0) return [];
+  let index;
+  if (workdayCount <= 0) {
+    index = 0;
+  } else {
+    index = Math.floor((workdayCount - 1) / 2) % teams.length;
+  }
+  index = ((index + offsetTeams) % teams.length + teams.length) % teams.length;
   return teams[index];
+}
+
+function getCurrentTeam(startDate, teams, offsetTeams = 0) {
+  const workdayCount = countWorkdaysSinceStart(startDate);
+  return teamByWorkdayCount(workdayCount, teams, offsetTeams);
 }
 
 function isFirstDayOfTeam(startDate) {
@@ -36,4 +42,5 @@ module.exports = {
   countWorkdaysSinceStart,
   getCurrentTeam,
   isFirstDayOfTeam,
+  teamByWorkdayCount,
 };

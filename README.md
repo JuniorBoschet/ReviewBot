@@ -106,6 +106,16 @@ Lista as próximas duplas que entram em vigência, considerando apenas dias úte
 
 > O bot adiciona um tratamento de erros ao processar comandos para não cair se a interaction expirar ou ocorrer um problema; qualquer falha é logada.
 
+### `/skip`
+
+Força a troca imediata para a próxima dupla e registra esse "offset" em `state.json` para que o fluxo continue corretamente após reinicializações. É útil quando a equipe atual não pode revisar e deseja pular para os próximos.
+
+```markdown
+/skip
+```
+
+Após executar o comando, o bot responde no canal e envia também uma mensagem automática informando a nova dupla.
+
 ---
 
 ## ⚙️ Configuração
@@ -163,32 +173,3 @@ Inicie o bot:
 ```bash
 node index.js
 ```
-
----
-
-## ✅ Comportamento ao iniciar
-
-Ao iniciar:
-
-* O bot registra o comando `/reviewers`
-* Envia uma mensagem mostrando **a dupla atual**
-* Inicia um loop que verifica diariamente se precisa trocar a dupla
-
----
-
-## 📌 Observações
-
-* O intervalo de verificação é de **24 horas**
-* O bot assume que ficará rodando continuamente
-* Caso fique offline, ao voltar ele recalcula corretamente com base na data
-
----
-
-Se quiser, posso:
-
-* ✨ Converter isso para **TypeScript**
-* 📦 Criar uma versão com **feriados dinâmicos**
-* 🧪 Escrever testes para validar o rodízio
-* 🧠 Melhorar o README para padrão open-source
-
-Só dizer 😄

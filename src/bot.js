@@ -7,6 +7,7 @@ const { Client, GatewayIntentBits, ChannelType } = require('discord.js');
 const config = require('./config');
 const { formatBrazil, getTodayInBrazil, isWorkday } = require('./dates');
 const { getCurrentTeam, isFirstDayOfTeam } = require('./rotation');
+const state = require('./state');
 const { scheduleDailyTask } = require('./scheduler');
 
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,8 @@ async function notifyIfNeeded(forceToday = false) {
 
   if (!shouldNotify) return;
 
-  const team = getCurrentTeam(config.startDate, config.teams);
+  const offset = state.getOffsetTeams();
+  const team = getCurrentTeam(config.startDate, config.teams, offset);
   const channel = client.channels.cache.get(config.channelId.toString());
 
   if (!channel || channel.type !== ChannelType.GuildText) {
@@ -70,7 +72,10 @@ async function registerCommands() {
         },
       ],
     },
-    // outros comandos poderão ser adicionados aqui
+    {
+      name: 'skip',
+      description: 'Pula para a próxima dupla imediatamente',
+    },
   ];
 
   try {
@@ -89,12 +94,10 @@ async function registerCommands() {
 function startHttpServer() {
   const app = express();
 
-  // root page used by monitors to keep the service awake
   app.get('/', (req, res) => {
     res.send('🤖 Bot de Code Review online e funcionando! 🚀');
   });
 
-  // simple health check returning JSON status
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
@@ -121,29 +124,23 @@ function setupInteractionHandler() {
         });
       } else if (interaction.commandName === 'next') {
         const days = interaction.options.getInteger('days') || 5;
-        // compute future teams for given number of workdays
+        const offset = state.getOffsetTeams();
         const results = [];
         let workdaysSeen = 0;
         let cursor = new Date(config.startDate);
-        // advance until we hit today to establish offset
         const today = getTodayInBrazil();
         while (cursor <= today) {
           if (isWorkday(cursor)) workdaysSeen++;
           cursor.setDate(cursor.getDate() + 1);
         }
-        // now cursor is day after today
-        let currentIndex = workdaysSeen;
-        for (let i = 0; i < days; i++) {
-          // ensure cursor on a workday
+        let countCursor = workdaysSeen;
+        while (results.length < days) {
           while (!isWorkday(cursor)) {
             cursor.setDate(cursor.getDate() + 1);
           }
-          const idx = Math.floor((currentIndex) / 2) % config.teams.length;
-          results.push({
-            date: new Date(cursor),
-            pair: config.teams[idx],
-          });
-          currentIndex++;
+          countCursor += 1;
+          const team = require('./rotation').teamByWorkdayCount(countCursor, config.teams, offset);
+          results.push({ date: new Date(cursor), pair: team });
           cursor.setDate(cursor.getDate() + 1);
         }
         const lines = results.map(r => {
@@ -151,10 +148,33 @@ function setupInteractionHandler() {
           return `${dstr}: <@${r.pair[0]}> & <@${r.pair[1]}>`;
         });
         await interaction.reply({ content: `Próximas duplas (dias úteis):\n${lines.join('\n')}` });
+      } else if (interaction.commandName === 'skip') {
+        const newOffset = state.incrementOffsetTeams();
+        const team = getCurrentTeam(config.startDate, config.teams, newOffset);
+        const dateStr = formatBrazil(getTodayInBrazil(), 'dd/MM/yyyy');
+        await interaction.reply({
+          content: `✅ Skip aplicado! Nova dupla a partir de hoje (${dateStr}): <@${team[0]}> e <@${team[1]}>`,
+          ephemeral: false,
+        });
+        const channel = client.channels.cache.get(config.channelId.toString());
+        if (channel && channel.type === ChannelType.GuildText) {
+          await channel.send(`🔁 **SKIP** foi acionado! Nova dupla a partir de hoje (${dateStr}): <@${team[0]}> e <@${team[1]}>`);
+        }
+      } else if (interaction.commandName === 'skip') {
+        const newOffset = state.incrementOffsetTeams();
+        const team = getCurrentTeam(config.startDate, config.teams, newOffset);
+        const dateStr = formatBrazil(getTodayInBrazil(), 'dd/MM/yyyy');
+        await interaction.reply({
+          content: `✅ Skip aplicado! Nova dupla a partir de hoje (${dateStr}): <@${team[0]}> e <@${team[1]}>`,
+          ephemeral: false,
+        });
+        const channel = client.channels.cache.get(config.channelId.toString());
+        if (channel && channel.type === ChannelType.GuildText) {
+          await channel.send(`🔁 **SKIP** foi acionado! Nova dupla a partir de hoje (${dateStr}): <@${team[0]}> e <@${team[1]}>`);
+        }
       }
     } catch (err) {
       console.error('error handling interaction:', err);
-      // optionally attempt a follow-up message if reply fails
     }
   });
 }
@@ -163,7 +183,6 @@ async function start() {
   startHttpServer();
   setupInteractionHandler();
 
-  // use clientReady event (v15 deprecation for "ready")
   client.once('clientReady', async () => {
     console.log(`Bot conectado como ${client.user.tag}`);
 
@@ -171,8 +190,7 @@ async function start() {
     await notifyIfNeeded(true);
     scheduleDailyTask(() => notifyIfNeeded(false));
   });
-
-  // catch unhandled errors from Discord client to avoid crashing
+  
   client.on('error', (error) => {
     console.error('Discord client error:', error);
   });

@@ -1,7 +1,3 @@
-// scheduler.js
-// Provides a simple abstraction over a daily task scheduler. For now, it
-// uses setInterval but the caller can swap in a cron implementation later.
-
 const { getTodayInBrazil, startOfDay, addDays } = require('./dates');
 
 /**
@@ -11,7 +7,6 @@ const { getTodayInBrazil, startOfDay, addDays } = require('./dates');
  * @returns {Object} - an object with a `cancel()` method
  */
 function scheduleDailyTask(taskFn) {
-  // compute ms until next local midnight
   function msUntilNextMidnight() {
     const now = getTodayInBrazil();
     const tomorrow = addDays(startOfDay(now), 1);
@@ -27,7 +22,6 @@ function scheduleDailyTask(taskFn) {
     } catch (err) {
       console.error('scheduled task error:', err);
     }
-    // schedule regular interval
     intervalId = setInterval(taskFn, 24 * 60 * 60 * 1000);
   }
 

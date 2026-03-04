@@ -1,7 +1,3 @@
-// dates.js
-// Utilities for working with dates in the Brazil timezone and checking
-// holidays/workdays. These functions are pure and accept Date objects.
-
 const { toZonedTime, format: formatTz } = require('date-fns-tz');
 const { startOfDay, addDays, isSunday, isSaturday } = require('date-fns');
 const holidays = require('./holidays.json');
