@@ -88,9 +88,17 @@ async function registerCommands() {
 
 function startHttpServer() {
   const app = express();
+
+  // root page used by monitors to keep the service awake
   app.get('/', (req, res) => {
     res.send('🤖 Bot de Code Review online e funcionando! 🚀');
   });
+
+  // simple health check returning JSON status
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   app.listen(PORT, () => {
     console.log(`🌐 Servidor HTTP rodando na porta ${PORT} para manter o Render acordado`);
   });

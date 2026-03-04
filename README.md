@@ -19,6 +19,7 @@ Ele envia mensagens automáticas em um canal configurado e disponibiliza um coma
 * 🧾 Comando `/reviewers` para consultar quem está responsável hoje
 * ⚡ Registro de comandos **instantâneo no servidor** (quando possível)
 * ⚠️ Suporta `clientReady` (evento recomendado para discord.js v15+) e captura erros em interações para evitar crashes
+* 🌐 Inclui um servidor web simples com `/` e `/health` para que serviços de monitoramento (Render, Heroku, UptimeRobot etc.) verifiquem se o bot está ativo e mantenham o dyno acordado.
 
 ---
 
