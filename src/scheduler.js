@@ -1,0 +1,46 @@
+// scheduler.js
+// Provides a simple abstraction over a daily task scheduler. For now, it
+// uses setInterval but the caller can swap in a cron implementation later.
+
+const { getTodayInBrazil, startOfDay, addDays } = require('./dates');
+
+/**
+ * Schedule a function to run every day at approximately midnight Sao Paulo time.
+ *
+ * @param {Function} taskFn - async or sync function to execute daily
+ * @returns {Object} - an object with a `cancel()` method
+ */
+function scheduleDailyTask(taskFn) {
+  // compute ms until next local midnight
+  function msUntilNextMidnight() {
+    const now = getTodayInBrazil();
+    const tomorrow = addDays(startOfDay(now), 1);
+    return tomorrow.getTime() - now.getTime();
+  }
+
+  let timeoutId;
+  let intervalId;
+
+  async function fireAndSchedule() {
+    try {
+      await taskFn();
+    } catch (err) {
+      console.error('scheduled task error:', err);
+    }
+    // schedule regular interval
+    intervalId = setInterval(taskFn, 24 * 60 * 60 * 1000);
+  }
+
+  timeoutId = setTimeout(fireAndSchedule, msUntilNextMidnight());
+
+  return {
+    cancel() {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    },
+  };
+}
+
+module.exports = {
+  scheduleDailyTask,
+};
